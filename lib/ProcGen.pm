@@ -5,12 +5,19 @@ use experimental 'class';
 
 class RectangularRoom {
     field $x1 :param(x);
-    field $y1 :param(y); #()() #fix colors
+    field $y1 :param(y); #()()
     field $height :param;
     field $width :param;
 
     field $x2 = $x1 + $width;
     field $y2 = $y1 + $height;
+
+
+    method random_point() {
+       my $x = int($x1 + rand($width) + 1);
+       my $y = int($y1 + rand($height) + 1);
+       return [$x, $y]
+    }
 
     method center() {
         my $x = int($x1 + $width / 2);
@@ -53,9 +60,21 @@ class SimpleDungeonGenerator {
     field $width    :param;
     field $height   :param;
     field $rooms    :param(room_count);
+    field $max_monsters_per_room :param;
     field $min_size :param(min_room_size);
     field $max_size :param(max_room_size);
     field $player   :param;
+
+    my sub place_entities($room, $map, $max) {
+        my $num = int rand($max + 1); # need one more than we want cause 0 is a choice
+        for my $i (1..$num) {
+            my ($x, $y) = $room->random_point()->@*;
+            if (! $map->has_entity_at($x, $y)) {
+                my $e = rand() < 0.8 ? Entities::goblin() : Entities::hobgoblin();
+                $map->spawn($e, $x, $y);
+            }
+        }
+    }
 
     my sub tunnel_between($map, $start, $end) {
         my ($x1, $y1) = @$start;
@@ -70,7 +89,7 @@ class SimpleDungeonGenerator {
     }
 
     method generate_dungeon() {
-        my $map = GameMap->new(width  => $width, height => $height);
+        my $map = GameMap->new(width  => $width, height => $height, entities => [$player]);
 
         my @rooms;
         for (0..$rooms) {
@@ -92,6 +111,9 @@ class SimpleDungeonGenerator {
 
             # tunnel between the previous room and this one
             tunnel_between($map, $rooms[-1]->center, $room->center) if @rooms;
+
+            # add some monsters
+            place_entities($room, $map, $max_monsters_per_room);
 
             # add the room to the list
             push @rooms, $room;

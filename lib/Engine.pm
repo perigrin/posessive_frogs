@@ -11,23 +11,7 @@ class Engine {
     field $height :param;
     field $width :param;
 
-    field $player = Entity->new(
-       x    => 0,
-       y    => 0,
-       char => '@',
-       fg   => '#fff',
-       bg   => '#000',
-    );
-
-    field @npcs = (
-        Entity->new(
-            x => $player->x - 5,
-            y => $player->y,
-            char => 'N',
-            fg => '#0f0',
-            bg => '#000',
-        ),
-    );
+    field $player = Entities::player();
 
     field $app = Games::ROT->new(
         screen_width  => $width,
@@ -35,12 +19,13 @@ class Engine {
     );
 
     field $map = SimpleDungeonGenerator->new(
-        room_count    => 30,
-        min_room_size => 6,
-        max_room_size => 10,
-        width         => $width,
-        height        => $height,
-        player        => $player,
+        room_count            => 30,
+        min_room_size         => 6,
+        max_room_size         => 10,
+        max_monsters_per_room => 2,
+        width                 => $width,
+        height                => $height,
+        player                => $player,
     )->generate_dungeon();
 
     ADJUST {
@@ -48,6 +33,9 @@ class Engine {
             my ($x, $y) = ($player->x + $dx, $player->y + $dy);
             return unless $map->is_in_bounds($x, $y);
             return unless $map->tile_at($x, $y)->is_walkable;
+            if (my $e = $map->has_entity_at($x, $y)) {
+                return if $e->blocks_movement;
+            }
             $player->move($dx,$dy);
         }
 
@@ -88,8 +76,5 @@ class Engine {
 		update_fov($map, $player);
         $app->clear();
         $map->render($app);
-        for my $e (@npcs, $player) {
-            $app->draw($e->x, $e->y, $e->char, $e->fg, $e->bg);
-        }
     }
 }

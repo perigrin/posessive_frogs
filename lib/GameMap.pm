@@ -2,6 +2,8 @@ use 5.38.0;
 use warnings;
 use experimental 'class';
 
+use Entities;
+
 class Tile {
     field $walkable :param;
     field $opaque :param;
@@ -36,11 +38,23 @@ class Tile {
 }
 
 class GameMap {
-    field $width   :param;
-    field $height  :param;
+    use List::Util qw(first);
+
+    field $width    :param;
+    field $height   :param;
+    field $entities :param;
+
+    method has_entity_at($x, $y) {
+        first {  $_->x == $x && $_->y == $y } $entities->@*;
+    }
+
+    method spawn($e, $x, $y) {
+        $e->move($x, $y);
+        push @$entities, $e;
+    }
 
     method is_in_bounds($x, $y) {
-        return 0 <= $x < $width && 0 <= $y < $height;
+        return 1 <= $x < $width && 0 <= $y < $height;
     }
 
     my sub FLOOR_TILE() {
@@ -67,6 +81,10 @@ class GameMap {
 		$self->for_each_tile(sub ($tile, $x, $y) {
             $term->draw($x, $y, $tile->char, $tile->fg, $tile->bg) if $tile->seen;
         });
+        for my $e ($entities->@*) {
+            my $tile = $self->tile_at($e->x, $e->y);
+            $term->draw($e->x, $e->y, $e->char, $e->fg, $e->bg) if $tile->visible;
+        }
     }
 
     method tile_at($x, $y) { $tiles[$y][$x] }
