@@ -60,7 +60,6 @@ class SimpleDungeonGenerator {
     my sub tunnel_between($map, $start, $end) {
         my ($x1, $y1) = @$start;
         my ($x2, $y2) = @$end;
-        warn "$x1, $y1 -> $x2, $y2";
         if (rand() < 0.5) {
             $map->_tiles_to_floor([min($x1, $x2)..max($x1, $x2)],[$y1]);
             $map->_tiles_to_floor([$x2],[min($y1, $y2)..max($y1, $y2)]);
@@ -92,7 +91,6 @@ class SimpleDungeonGenerator {
             $map->_tiles_to_floor($room->inner);
 
             # tunnel between the previous room and this one
-            warn "Rooms ".scalar @rooms;
             tunnel_between($map, $rooms[-1]->center, $room->center) if @rooms;
 
             # add the room to the list

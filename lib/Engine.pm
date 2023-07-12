@@ -67,7 +67,25 @@ class Engine {
         $app->run( sub { $self->render() } );
     }
 
+	my sub update_fov($map, $player) {
+		state $fov = Games::ROT::FOV->new();
+
+		$map->for_each_tile(sub ($tile, @){ $tile->visible(0) });
+
+		my @cells = $fov->calc_visible_cells_from(
+			$player->x,
+			$player->y,
+			8,
+			sub ($cell) { $map->tile_at(@$cell)->is_opaque() }
+		);
+		for my $cell (@cells) {
+			my $tile = $map->tile_at(@$cell);
+			$tile->visible(1);
+		}
+	}
+
     method render() {
+		update_fov($map, $player);
         $app->clear();
         $map->render($app);
         for my $e (@npcs, $player) {
