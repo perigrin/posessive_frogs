@@ -53,6 +53,23 @@ class GameMap {
         push @$entities, $e;
     }
 
+    method remove_entity($e) {
+        if ($e->char eq '@') {
+            say "You died. Game Over.";
+            exit;
+        }
+        $entities = [grep { $_ != $e } @$entities];
+    }
+
+    method update_entities() {
+        for my $mob ( grep { $_ isa Mob } @$entities ) {
+            my $action = $mob->next_action($self);
+            next unless $action;
+
+            $action->perform();
+        }
+    }
+
     method is_in_bounds($x, $y) {
         return 1 <= $x < $width && 0 <= $y < $height;
     }
