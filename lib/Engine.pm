@@ -4,6 +4,7 @@ use experimental 'class';
 
 use Games::ROT;
 use Entities;
+use Actions;
 
 use ProcGen qw(generate_dungeon);
 
@@ -29,27 +30,36 @@ class Engine {
     )->generate_dungeon();
 
     ADJUST {
-        my sub movement_action($dx, $dy) {
-            my ($x, $y) = ($player->x + $dx, $player->y + $dy);
-            return unless $map->is_in_bounds($x, $y);
-            return unless $map->tile_at($x, $y)->is_walkable;
-            if (my $e = $map->has_entity_at($x, $y)) {
-                return if $e->blocks_movement;
-            }
-            $player->move($dx,$dy);
-        }
-
         $app->add_event_handler(
             'keydown' => sub ($event) {
                 my %KEY_MAP = (
-                    h => sub { movement_action(-1, 0) },
-                    j => sub { movement_action( 0, 1) },
-                    k => sub { movement_action( 0,-1) },
-                    l => sub { movement_action( 1, 0) },
-                    q => sub { exit }
+                    h => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dx     => -1
+                    ),
+                    j => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dy     => 1
+                    ),
+                    k => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dy     => -1
+                    ),
+                    l => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dx     => 1
+                    ),
+                    q => QuitAction->new(
+                        entity => $player
+                    ),
                 );
+
                 # lets execute the action now
-                $KEY_MAP{$event->key}->();
+                $KEY_MAP{ $event->key }->perform();
             }
         );
         $app->run( sub { $self->render() } );
@@ -66,6 +76,7 @@ class Engine {
 			8,
 			sub ($cell) { $map->tile_at(@$cell)->is_opaque() }
 		);
+
 		for my $cell (@cells) {
 			my $tile = $map->tile_at(@$cell);
 			$tile->visible(1);
