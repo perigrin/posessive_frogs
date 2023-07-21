@@ -22,12 +22,43 @@ class MovementAction :isa(Action) {
     method perform() {
         my $player = $self->entity();
         my ( $x, $y ) = ( $player->x + $dx, $player->y + $dy );
+
         return unless $map->is_in_bounds( $x, $y );
         return unless $map->tile_at( $x, $y )->is_walkable;
-        if ( my $e = $map->has_entity_at( $x, $y ) ) {
-            return if $e->blocks_movement;
+
+        my $e = $map->has_entity_at( $x, $y );
+        if ($e && $e ne $player) {
+            my $combat = MeleeAttackAction->new(
+                map      => $map,
+                entity   => $player,
+                defender => $e,
+            );
+            return $combat->perform();
         }
+
         $player->move( $dx, $dy );
+    }
+}
+
+class MeleeAttackAction :isa(Action) {
+    use Games::Dice qw(roll);
+
+    field $defender :param;
+    field $map :param;
+
+    method perform() {
+        my $attacker    = $self->entity;
+        my $attack_roll = roll('1d20') + $attacker->stats->strength;
+        my $defense     = $defender->stats->armor + 10;
+
+        if ( $attack_roll > $defense ) {
+            $defender->stats->change_hp( $defense - $attack_roll );
+
+            if ( $defender->stats->hp <= 0 ) {
+                $map->remove_entity($defender);
+            }
+        }
+        return;
     }
 }
 

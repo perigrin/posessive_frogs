@@ -2,7 +2,6 @@ use 5.38.0;
 use warnings;
 use experimental 'class';
 
-
 class RectangularRoom {
     field $x1 :param(x);
     field $y1 :param(y); #()()

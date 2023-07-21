@@ -53,6 +53,30 @@ class Engine {
                         entity => $player,
                         dx     => 1
                     ),
+                    y => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dx     => -1,
+                        dy     => -1,
+                    ),
+                    u => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dx     => 1,
+                        dy     => -1,
+                    ),
+                    b => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dx     => -1,
+                        dy     => 1,
+                    ),
+                    n => MovementAction->new(
+                        map    => $map,
+                        entity => $player,
+                        dx     => 1,
+                        dy     => 1,
+                    ),
                     q => QuitAction->new(
                         entity => $player
                     ),
@@ -60,6 +84,8 @@ class Engine {
 
                 # lets execute the action now
                 $KEY_MAP{ $event->key }->perform();
+                # now everyone else gets a turn
+                $map->update_entities();
             }
         );
         $app->run( sub { $self->render() } );
