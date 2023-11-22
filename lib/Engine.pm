@@ -3,14 +3,15 @@ use warnings;
 use experimental 'class';
 
 use Games::ROT;
-use Entities;
-use Actions;
 
-use ProcGen qw(generate_dungeon);
+use Actions;
+use Entities;
+use MessageLog;
+use ProcGen;
 
 class Engine {
-    field $height :param;
-    field $width :param;
+    field $height : param;
+    field $width : param;
 
     field $player = Entities::player();
 
@@ -25,9 +26,11 @@ class Engine {
         max_room_size         => 10,
         max_monsters_per_room => 2,
         width                 => $width,
-        height                => $height,
+        height                => $height - 6,
         player                => $player,
     )->generate_dungeon();
+
+    field $log = MessageLog->instance();
 
     ADJUST {
         $app->add_event_handler(
@@ -84,34 +87,49 @@ class Engine {
 
                 # lets execute the action now
                 $KEY_MAP{ $event->key }->perform();
+
                 # now everyone else gets a turn
                 $map->update_entities();
             }
         );
+
+        $log->add_message( "Welcome adventurer, to yet another dungeon!",
+            Colors::WelcomeText );
+
         $app->run( sub { $self->render() } );
     }
 
-	my sub update_fov($map, $player) {
-		state $fov = Games::ROT::FOV->new();
+    my sub update_fov ( $map, $player ) {
+        state $fov = Games::ROT::FOV->new();
 
-		$map->for_each_tile(sub ($tile, @){ $tile->visible(0) });
+        $map->for_each_tile( sub ( $tile, @ ) { $tile->visible(0) } );
 
-		my @cells = $fov->calc_visible_cells_from(
-			$player->x,
-			$player->y,
-			8,
-			sub ($cell) { $map->tile_at(@$cell)->is_opaque() }
-		);
+        my @cells = $fov->calc_visible_cells_from( $player->x, $player->y, 8,
+            sub ($cell) { $map->tile_at(@$cell)->is_opaque() } );
 
-		for my $cell (@cells) {
-			my $tile = $map->tile_at(@$cell);
-			$tile->visible(1);
-		}
-	}
+        for my $cell (@cells) {
+            my $tile = $map->tile_at(@$cell);
+            $tile->visible(1);
+        }
+    }
+
+    method render_bar ( $current, $max, $total ) {
+        my $width = int( ( $current / $max ) * $total );
+
+        $app->draw_rect( 8, 45, $total, 0, ' ', Colors::BarEmpty,
+            Colors::BarEmpty );
+        if ($width) {
+            $app->draw_rect( 8, 45, $width, 0, ' ', Colors::BarFilled,
+                Colors::BarFilled );
+        }
+        $app->puts( 0, 45, "hp: $current/$max" );
+    }
 
     method render() {
-		update_fov($map, $player);
+        update_fov( $map, $player );
         $app->clear();
         $map->render($app);
+        $self->render_bar( $player->stats->hp, $player->stats->max_hp, 20 );
+        $log->render( $app, 40, 45, 40, 5 );
     }
 }

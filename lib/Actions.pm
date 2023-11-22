@@ -2,8 +2,12 @@ use 5.38.0;
 use warnings;
 use experimental 'class';
 
+use Colors;
+use MessageLog;
+
 class Action {
-    field $entity :param;
+    field $entity : param;
+    field $log = MessageLog->instance();
 
     method entity {
         die 'protected method' unless caller()->isa(__PACKAGE__);
@@ -11,13 +15,18 @@ class Action {
     }
 
     method perform() { ... }
+
+    method log ( $msg, $color ) {
+        die 'protected method' unless caller()->isa(__PACKAGE__);
+        $log->add_message( $msg, $color );
+    }
 }
 
-class MovementAction :isa(Action) {
-    field $dx :param = 0;
-    field $dy :param = 0;
+class MovementAction : isa(Action) {
+    field $dx : param = 0;
+    field $dy : param = 0;
 
-    field $map :param;
+    field $map : param;
 
     method perform() {
         my $player = $self->entity();
@@ -27,7 +36,7 @@ class MovementAction :isa(Action) {
         return unless $map->tile_at( $x, $y )->is_walkable;
 
         my $e = $map->has_entity_at( $x, $y );
-        if ($e && $e ne $player) {
+        if ( $e && $e ne $player ) {
             my $combat = MeleeAttackAction->new(
                 map      => $map,
                 entity   => $player,
@@ -40,11 +49,11 @@ class MovementAction :isa(Action) {
     }
 }
 
-class MeleeAttackAction :isa(Action) {
+class MeleeAttackAction : isa(Action) {
     use Games::Dice qw(roll);
 
-    field $defender :param;
-    field $map :param;
+    field $defender : param;
+    field $map : param;
 
     method perform() {
         my $attacker    = $self->entity;
@@ -52,7 +61,15 @@ class MeleeAttackAction :isa(Action) {
         my $defense     = $defender->stats->armor + 10;
 
         if ( $attack_roll > $defense ) {
-            $defender->stats->change_hp( $defense - $attack_roll );
+            my $damage = $defense - $attack_roll;
+            $self->log(
+                sprintf(
+                    '%s attacks %s for %d damage',
+                    $attacker->name, $defender->name, abs($damage)
+                ),
+                Colors::Attack
+            );
+            $defender->stats->change_hp($damage);
 
             if ( $defender->stats->hp <= 0 ) {
                 $map->remove_entity($defender);
@@ -62,6 +79,6 @@ class MeleeAttackAction :isa(Action) {
     }
 }
 
-class QuitAction :isa(Action) {
+class QuitAction : isa(Action) {
     method perform() { exit }
 }
