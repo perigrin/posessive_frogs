@@ -3,15 +3,16 @@ use warnings;
 use experimental 'class';
 
 use Entities;
+use Colors;
 
 class Tile {
     field $walkable :param;
     field $opaque :param;
     field $char :param //= ' ';
-    field $light_fg :param //= '#fff';
-    field $light_bg :param //= '#000';
-    field $dark_fg  :param //= '#666';
-    field $dark_bg  :param //= '#000';
+    field $light_fg :param //= Colors::DefaultLightTileFG;
+    field $light_bg :param //= Colors::DefaultLightTileBG;
+    field $dark_fg  :param //= Colors::DefaultDarkTileFG;
+    field $dark_bg  :param //= Colors::DefaultDarkTileBG;
 
     field $seen    = 0;
     field $visible = 0;

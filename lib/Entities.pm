@@ -2,12 +2,14 @@ use 5.38.0;
 use warnings;
 use experimental 'class';
 
+use Colors;
+
 class Entity {
     field $x :param //= 0;
     field $y :param //= 0;
     field $char: param;
-    field $fg :param //= '#fff';
-    field $bg :param //= '#000';
+    field $fg :param //= Colors::DefaultEntityFG;
+    field $bg :param //= Colors::DefaultEntityBG;
     field $name :param //= "<unnamed>";
     field $blocks_movement :param //= 1;
     field $abilities :param;
@@ -71,7 +73,7 @@ package Entities {
         Mob->new(
             name      => 'goblin '.$i++,
             char      => 'g',
-            fg        => '#41924B',
+            fg        => Colors::Goblin,
             abilities => Abilities->new(
                 strength => -3,
                 armor    => 0,
@@ -85,7 +87,7 @@ package Entities {
         Mob->new(
             name      => 'hobgoblin  '.$i++,
             char      => 'h',
-            fg        => '#ff6f3c',
+            fg        => Colors::Hobgoblin,
             abilities => Abilities->new(
                 strength => -1,
                 armor    => 1,
@@ -98,7 +100,7 @@ package Entities {
         Entity->new(
             name      => 'hero',
             char      => '@',
-            fg        => '#fff',
+            fg        => Colors::Hero,
             abilities => Abilities->new(
                 strength => min( roll_array('3d6') ),
                 armor    => 1,
