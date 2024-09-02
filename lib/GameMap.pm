@@ -1,6 +1,6 @@
 use 5.38.0;
 use warnings;
-use experimental 'class';
+use experimental qw(class try);
 
 use Colors;
 use Entities;
@@ -59,8 +59,7 @@ class GameMap {
 
     method remove_entity ($e) {
         if ( $e->char eq '@' ) {
-            $log->add_message( "You died. Game over.", Colors::GameOver );
-            exit;
+            die GameOver->new( message => "You died. Game over." );
         }
         $entities = [ grep { $_ != $e } @$entities ];
     }
@@ -69,8 +68,12 @@ class GameMap {
         for my $mob ( grep { $_ isa Mob } @$entities ) {
             my $action = $mob->next_action($self);
             next unless $action;
-
-            $action->perform();
+            try {
+                $action->perform();
+            }
+            catch ($e) {
+                die $e unless $e isa Impossible;
+            }
         }
     }
 

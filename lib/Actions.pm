@@ -4,6 +4,7 @@ use experimental 'class';
 
 use Colors;
 use MessageLog;
+use Exceptions;
 
 class Action {
     field $entity : param;
@@ -32,17 +33,33 @@ class MovementAction : isa(Action) {
         my $player = $self->entity();
         my ( $x, $y ) = ( $player->x + $dx, $player->y + $dy );
 
-        return unless $map->is_in_bounds( $x, $y );
-        return unless $map->tile_at( $x, $y )->is_walkable;
+        die Impossible->new( message => "That way is blocked." )
+          unless $map->is_in_bounds( $x, $y );
+
+        die Impossible->new( message => "That way is blocked." )
+          unless $map->tile_at( $x, $y )->is_walkable;
 
         my $e = $map->has_entity_at( $x, $y );
         if ( $e && $e ne $player ) {
-            my $combat = MeleeAttackAction->new(
-                map      => $map,
-                entity   => $player,
-                defender => $e,
-            );
-            return $combat->perform();
+            if ( $e isa Mob ) {
+                my $combat = MeleeAttackAction->new(
+                    map      => $map,
+                    entity   => $player,
+                    defender => $e,
+                );
+                return $combat->perform();
+            }
+            elsif ( $e isa Item ) {
+                my $use = ItemAction->new(
+                    map    => $map,
+                    entity => $player,
+                    item   => $e,
+                );
+                return $use->perform();
+            }
+            else {
+                die Impossible->new( message => 'Cannot attack ' . $e->name );
+            }
         }
 
         $player->move( $dx, $dy );
@@ -60,25 +77,59 @@ class MeleeAttackAction : isa(Action) {
         my $attack_roll = roll('1d20') + $attacker->stats->strength;
         my $defense     = $defender->stats->armor + 10;
 
+        $self->log(
+            sprintf( '%s attacks %s', $attacker->name, $defender->name ),
+            Colors::Attack );
+
         if ( $attack_roll > $defense ) {
             my $damage = $defense - $attack_roll;
             $self->log(
-                sprintf(
-                    '%s attacks %s for %d damage',
-                    $attacker->name, $defender->name, abs($damage)
-                ),
+                sprintf( '%s deals %d damage', $attacker->name, abs($damage) ),
                 Colors::Attack
             );
             $defender->stats->change_hp($damage);
+            return if $defender->stats->hp > 0;    # still alive
 
-            if ( $defender->stats->hp <= 0 ) {
-                $map->remove_entity($defender);
+            $map->remove_entity($defender);
+            if ( $defender->char eq '@' ) {
+                die GameOver->new( message => "You died. Game over." );
             }
+        }
+        else {
+            $self->log( sprintf( '%s misses', $attacker->name ),
+                Colors::Attack );
         }
         return;
     }
 }
 
+class WaitAction : isa(Action) {
+    method perform() { }
+}
+
 class QuitAction : isa(Action) {
     method perform() { exit }
+}
+
+class ItemAction : isa(Action) {
+    use experimental 'builtin';
+    use builtin qw(blessed);
+
+    field $map : param;
+    field $item : param;
+
+    method perform() {
+        $item->activate($self);
+        $map->remove_entity($item);
+    }
+
+    method entity() {
+        die 'protected method' unless caller()->isa( blessed $item);
+        $self->SUPER::entity();
+    }
+
+    method log ( $msg, $color ) {
+        die 'protected method' unless caller()->isa( blessed $item);
+        $self->SUPER::log( $msg, $color );
+    }
 }

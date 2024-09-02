@@ -17,9 +17,15 @@ package Colors {
     use constant DefaultDarkTileFG  => '#666';
     use constant DefaultDarkTileBG  => Black;
 
-    use constant WelcomeText => '#2AF';
-    use constant GameOver    => '#F00';
-    use constant Attack      => '#C00';
+    use constant Invalid    => '#FF0';
+    use constant Impossible => '#888';
+    use constant Error      => '#F44';
+
+    use constant WelcomeText     => '#2AF';
+    use constant HealthRecovered => '#0F0';
+
+    use constant GameOver => '#F00';
+    use constant Attack   => '#C00';
 
     use constant BarText   => White;
     use constant BarFilled => '#060';

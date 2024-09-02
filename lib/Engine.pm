@@ -1,6 +1,6 @@
 use 5.38.0;
 use warnings;
-use experimental 'class';
+use experimental qw(class try);
 
 use Games::ROT;
 
@@ -8,6 +8,7 @@ use Actions;
 use Entities;
 use MessageLog;
 use ProcGen;
+use Exceptions;
 
 class Engine {
     field $height : param;
@@ -80,16 +81,29 @@ class Engine {
                         dx     => 1,
                         dy     => 1,
                     ),
+                    '.' => WaitAction->new(
+                        entity => $player
+                    ),
                     q => QuitAction->new(
                         entity => $player
                     ),
                 );
 
-                # lets execute the action now
-                $KEY_MAP{ $event->key }->perform();
+                try {
+                    # lets execute the action now
+                    $KEY_MAP{ $event->key }->perform();
 
-                # now everyone else gets a turn
-                $map->update_entities();
+                    # now everyone else gets a turn
+                    $map->update_entities();
+                }
+                catch ($e) {
+                    say STDERR $e->message;
+                    $log->add_message( $e->message, $e->color );
+                    if ( $e isa GameOver ) {
+                        say STDOUT $e->message;
+                        exit;
+                    }
+                }
             }
         );
 

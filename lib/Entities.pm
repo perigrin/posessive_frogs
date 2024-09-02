@@ -12,7 +12,6 @@ class Entity {
     field $bg : param              //= Colors::DefaultEntityBG;
     field $name : param            //= "<unnamed>";
     field $blocks_movement : param //= 1;
-    field $abilities : param;
 
     method x               { $x }
     method y               { $y }
@@ -20,8 +19,8 @@ class Entity {
     method fg              { $fg }
     method bg              { $bg }
     method blocks_movement { $blocks_movement }
-    method stats           { $abilities }
-    method name            { $name }
+
+    method name { $name }
 
     method position() { [ $x, $y ] }
 
@@ -35,6 +34,9 @@ class Mob : isa(Entity) {
     use List::Util qw(first);
     use Games::ROT::AStar;
     use Actions;
+
+    field $abilities : param;
+    method stats { $abilities }
 
     # Mob's currently just walk toward the player if visible
     method next_action ($map) {
@@ -53,7 +55,7 @@ class Mob : isa(Entity) {
         my @step = Games::ROT::AStar::get_path( $map, $self->position,
             $player->position );
 
-        return unless @step;
+        return unless @step > 1;
 
         return MovementAction->new(
             entity => $self,
@@ -61,6 +63,26 @@ class Mob : isa(Entity) {
             dx     => $step[1]->[0] - $self->x,
             dy     => $step[1]->[1] - $self->y,
         );
+    }
+}
+
+class Item : isa(Entity) {
+    method activate ($action) { ... }
+}
+
+class HealingPotion : isa(Item) {
+    use experimental 'builtin';
+    use builtin qw(blessed);
+
+    field $amount : param;
+
+    method activate ($action) {
+        if ( $action->entity->stats->hp == $action->entity->stats->max_hp ) {
+            die Impossible->new( message => 'Already at full health!' );
+        }
+        $action->entity->stats->heal($amount);
+        $action->log( "You consume a healing potion and regain $amount HP!",
+            Colors::HealthRecovered );
     }
 }
 
@@ -97,7 +119,7 @@ package Entities {
     }
 
     sub player() {
-        Entity->new(
+        Mob->new(
             name      => 'hero',
             char      => '@',
             fg        => Colors::Hero,
@@ -106,6 +128,15 @@ package Entities {
                 armor    => 1,
                 hp       => roll('1d8'),    # TODO add constitution bonus
             ),
+        );
+    }
+
+    sub healing_potion() {
+        HealingPotion->new(
+            name   => 'healing potion',
+            char   => '!',
+            fg     => Colors::HealthRecovered,
+            amount => roll('1d4'),
         );
     }
 }
@@ -127,5 +158,12 @@ class Abilities {
     method vision { 8 }
 
     method change_hp ($delta) { $hp += $delta }
+
+    method heal ($delta) {
+        return if $hp == $max_hp;    # already at the max
+
+        # otherwise update our HP but clamp it to max_hp
+        $hp = $hp + $delta > $max_hp ? $max_hp : $hp + $delta;
+    }
 }
 
